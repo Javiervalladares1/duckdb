@@ -141,6 +141,19 @@ def main():
         '![Indicadores](figures/indicadores.png)', '![Perfil horario](figures/perfil_horario.png)',
         *observations('final'),
         '## Ejercicio 8: evolución de tres años en meses comparables', markdown(common)]
+    document.append('### Interpretación numérica de las siete tarjetas mensuales')
+    last_year = int(monthly.year.max())
+    last_month = int(monthly[monthly.year==last_year].month.max())
+    latest = monthly[(monthly.year==last_year) & (monthly.month==last_month)].set_index('taxi')
+    for metric, title, unit, log in metrics:
+        unit = {'trips':'viajes', 'total_usd':'USD', 'avg_total_usd':'USD/viaje',
+                'median_miles':'millas', 'median_minutes':'minutos', 'credit_pct':'%',
+                'card_tip_pct':'% de tarifa en tarjeta'}[metric]
+        yellow, green = float(latest.loc['yellow',metric]), float(latest.loc['green',metric])
+        document.append(f'**{title} ({last_year}-{last_month:02d}):** amarillo {yellow:,.3f} {unit}; '
+                        f'verde {green:,.3f} {unit}. ' +
+                        ('El mayor volumen explica parte de la diferencia de importe agregado; no equivale a mayor ingreso por conductor.' if metric in ['trips','total_usd'] else
+                         'Se compara la población válida del mismo mes; la diferencia es descriptiva y puede reflejar composición de recorridos y pasajeros.'))
     for taxi in ['yellow','green']:
         sub = common[common.taxi==taxi].set_index('year').sort_index()
         pieces = []
