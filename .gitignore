@@ -20,3 +20,9 @@ venv/
 Thumbs.db
 .idea/
 .vscode/
+
+# Temporales y credenciales locales
+tmp/
+.env
+.env.*
+!.env.example
