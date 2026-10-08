@@ -13,7 +13,7 @@ from common import ROOT, connect, files, create_views, sqlstr
 
 
 def markdown(frame, limit=40):
-    frame = frame.head(limit).fillna('NULL')
+    frame = frame.head(limit).astype(object).fillna('NULL')
     def escape(x):
         return str(x).replace('|', '\\|').replace('\n', ' ')
     return '\n'.join(['| ' + ' | '.join(map(escape, frame.columns)) + ' |',

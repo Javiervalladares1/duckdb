@@ -19,6 +19,9 @@ services:
       - ./scripts:/workspace/scripts
       - ./sql:/workspace/sql
       - ./docs:/workspace/docs
+      - ./.env:/workspace/.env
+      - ./tests:/workspace/tests
+      - ./.git:/workspace/.git:ro
     restart: unless-stopped
 
   metabase:

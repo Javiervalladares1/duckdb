@@ -1,138 +1,198 @@
-# Lab 8 - DuckDB
+# Lab 8 - DuckDB | NYC TLC
 
-Repositorio base del laboratorio 8 del curso **CC3084 - Data Science**
-(Universidad del Valle de Guatemala, Ciclo 2, 2026).
+Laboratorio CC3084, UVG, Ciclo 2 de 2026. Fork del
+[repositorio base](https://github.com/menene/duckdb).
 
-Este es el repositorio **proporcionado por el docente**. Contiene la estructura
-del proyecto, el ambiente de ejecucion basado en Docker y un script que descarga
-los datos de **2026**. Todo lo demas debe ser construido por cada equipo.
+Descarga incremental de yellow/green: 2026, luego 2024 y después 2025. Incluye
+consultas directas Parquet, calidad, indicadores, benchmark contra tablas DuckDB,
+notebook ejecutado y tablero Metabase con 10 visualizaciones.
 
-## Trabajo con fork
+- [Informe, hallazgos y discusión 9.1-9.8](docs/informe.md).
+- [13 preguntas, indicadores y decisiones metodológicas](docs/metodologia.md).
+- [Consultas y resultados iniciales](docs/results/initial_2026/queries.md).
+- [Consultas y resultados 2024+2026](docs/results/expanded_2024_2026/queries.md).
+- [Consultas y resultados finales](docs/results/final/queries.md).
+- [Verificación del ambiente](docs/ambiente.md).
 
-El laboratorio se desarrolla y se entrega sobre un **fork** de este repositorio.
-No se trabaja directamente sobre el repositorio del docente.
+## Estructura y propósito
 
-1. Realice un fork de este repositorio:
-   <https://github.com/menene/duckdb>
+| Ruta | Propósito |
+|---|---|
+| data/raw/tipo/año/ | Parquet originales, excluidos de Git |
+| data/processed/ | Tabla materializada, snapshot para Metabase y temporales, fuera de Git |
+| scripts/ | Descarga, análisis, benchmark, informe, notebook, tablero y verificación |
+| sql/ | Vistas de calidad y consultas analíticas versionadas |
+| sql/benchmarks/ | Cuatro consultas parametrizadas equivalentes |
+| sql/dashboard/ | SQL de cada tarjeta |
+| notebooks/ | Notebook ejecutado con consultas directas |
+| docs/manifests/ | URL, bytes, filas, SHA-256 y estado de cada etapa |
+| docs/results/ | CSV pequeños, esquemas, metadatos y documentación SQL |
+| docs/benchmarks/ | Tiempos individuales, resumen, CTAS y entorno |
+| docs/figures/ | Evidencia gráfica |
+| Dockerfile | Python, DuckDB, JupyterLab, Pandas, PyArrow, Matplotlib, Requests |
+| metabase.Dockerfile | Java 21, Metabase y driver DuckDB sobre glibc |
+| docker-compose.yml | Servicios, puertos locales y volúmenes persistentes |
 
-2. Clone **su propio fork** (no el del docente):
+## Cómo levantar el ambiente (ejercicio 1)
 
-   ```bash
-   git clone https://github.com/<su-usuario>/duckdb.git
-   cd duckdb
-   ```
+Requisitos: Git, Docker Desktop iniciado y Docker Compose. Se recomiendan al menos
+10 GB libres y memoria suficiente para DuckDB (límite 3 GB), Jupyter y Metabase.
+En macOS, conviene mantener descargada la carpeta si reside en iCloud Drive para
+evitar que el sistema retire archivos durante el análisis.
 
-3. Opcional, para recibir correcciones publicadas por el docente:
-
-   ```bash
-   git remote add upstream https://github.com/menene/duckdb.git
-   git fetch upstream
-   ```
-
-Realice commits frecuentes y descriptivos: el historial del repositorio es parte
-de la evaluacion. **La entrega del laboratorio es la URL de su fork.**
-
-## Estructura
-
-```text
-duckdb/
-|
-+-- data/
-|   +-- raw/
-|   +-- processed/
-|
-+-- notebooks/
-|
-+-- scripts/
-|
-+-- sql/
-|
-+-- docs/
-|
-+-- Dockerfile
-+-- metabase.Dockerfile
-+-- docker-compose.yml
-+-- README.md
+```bash
+git clone https://github.com/Javiervalladares1/duckdb.git
+cd duckdb
+touch .env
+docker compose up -d --build
+docker compose ps
+curl -f http://localhost:8888/api/status
+curl -f http://localhost:3000/api/health
+docker compose exec lab python -c "import duckdb, pandas, pyarrow; print(duckdb.__version__)"
 ```
 
-## Requisitos
+Abra [JupyterLab](http://localhost:8888/lab) y [Metabase](http://localhost:3000).
+Los servicios escuchan solo en 127.0.0.1. Jupyter conserva la configuración local
+sin token del repositorio base. El proyecto vive en `/workspace` dentro de los
+contenedores y data se monta en `/workspace/data`. Los scripts resuelven las rutas
+respecto a su ubicación. `docker compose down` detiene los servicios y conserva
+los datos y el volumen Metabase.
 
-- Docker, con Docker Compose
-- Git
+Docker y versiones directas fijadas reducen diferencias entre equipos. SQL,
+reglas, manifiestos y hashes permiten identificar los datos y transformaciones
+que produjeron los resultados. No se garantiza reproducción bit a bit si cambian
+imágenes base, dependencias transitivas o archivos originales de TLC.
 
-La primera construccion del ambiente descarga varios cientos de MB y puede
-tardar algunos minutos.
+## Cómo descargar los datos (ejercicios 2, 5 y 8)
 
-Considere el espacio en disco: las imagenes de Docker ocupan unos 3 GB y los
-datos de los tres anios del laboratorio superan 1.5 GB, a los que se suma la
-base materializada del Ejercicio 6. Se recomienda tener al menos 10 GB libres.
+```bash
+# Pasaporte: meses publicados de ambos tipos en 2026.
+docker compose exec lab python scripts/download_data.py --years 2026 --manifest docs/manifests/initial_2026.json
+# Añadir 2024 conservando 2026.
+docker compose exec lab python scripts/download_data.py --years 2024 2026 --manifest docs/manifests/expanded_2024_2026.json
+# Añadir 2025 conservando los anteriores.
+docker compose exec lab python scripts/download_data.py --years 2024 2025 2026 --manifest docs/manifests/final.json
+# Segunda ejecución: todos deben aparecer como existing.
+docker compose exec lab python scripts/download_data.py --years 2024 2025 2026 --manifest docs/manifests/rerun.json
+```
 
-## Datos
+Opciones: `--taxi yellow|green|all`, `--months 1 2 ...`, `--workers 4`. El valor por
+defecto es ambos taxis y todos los meses publicados de 2026. Se consulta el
+catálogo oficial, se reintentan fallos transitorios y se verifica longitud/footer
+Parquet antes del renombrado atómico desde `.part`. Un archivo existente se valida
+y omite; uno corrupto produce error y no se sobrescribe automáticamente.
 
-El repositorio incluye `scripts/download_data.py`, que descarga los archivos de
-2026 publicados por la TLC (`--help` muestra las opciones disponibles). Los
-archivos se guardan en `data/raw/<tipo>/<anio>/`.
+Completo significa obtener todos los enlaces oficiales de los años/meses
+solicitados con archivos locales legibles y no vacíos. No significa probar que
+TLC haya recogido todos los viajes reales. Los meses no publicados quedan en el
+manifiesto; los hashes permiten comprobar que las etapas preservaron las entradas.
+El hash no es una firma oficial ni detecta revisiones futuras en el servidor.
 
-La TLC publica cada mes con varias semanas de atraso, por lo que los ultimos
-meses de 2026 todavia no existen. El script consulta al servidor que meses estan
-publicados, de modo que vuelve a ejecutarse sin problema conforme aparezcan
-nuevos archivos.
+## Cómo ejecutar el análisis
 
-Los datos descargados **no deben incluirse en el repositorio Git**. El archivo
-`.gitignore` ya esta configurado para evitarlo.
+```bash
+# Reproduce las tres etapas en el orden del enunciado; incluye benchmark e informe.
+docker compose exec lab python scripts/run_pipeline.py
+```
 
-Fuente de datos: NYC TLC Trip Record Data
-<https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page>
+El pipeline no configura Metabase; ese paso está abajo. Para pasos independientes:
 
-Dentro de los contenedores, la carpeta `data/` del proyecto esta montada en
-`/workspace/data`. Esa es la ruta que deben usar las herramientas que corren
-dentro del ambiente, no la ruta de su computadora.
+```bash
+docker compose exec lab python scripts/analyze.py --years 2026 --stage initial_2026
+docker compose exec lab python scripts/analyze.py --years 2024 2026 --stage expanded_2024_2026
+docker compose exec lab python scripts/analyze.py --years 2024 2025 2026 --stage final
+```
 
-> **Nota sobre DuckDB:** un archivo `.duckdb` admite un solo proceso con permiso
-> de escritura a la vez. Si conecta una herramienta externa a su base de datos,
-> use el modo de solo lectura (`read_only`) en esa conexion; de lo contrario los
-> demas procesos no podran abrir el archivo.
+`run_pipeline.py --skip-download` reutiliza entradas y `--skip-benchmark` conserva
+las mediciones existentes (requiere haber ejecutado benchmark previamente).
+Las consultas leen Parquet con union_by_name y normalización tpep/lpep. El esquema
+de cada archivo está en schemas.csv. queries.md contiene SQL, objetivo, fuentes,
+resultado y decisión de cada consulta. Calidad usa todas las filas; indicadores
+usan la población válida definida en sql/00_views.sql. Se conservan los originales.
 
-## Material a entregar
+## Cómo reproducir los benchmarks (ejercicio 6)
 
-Al finalizar, su fork debe contener:
+```bash
+docker compose exec lab python scripts/benchmark.py --repeats 3
+```
 
-- el codigo fuente modificado y los scripts de descarga;
-- las consultas SQL desarrolladas;
-- el notebook o notebooks utilizados;
-- la documentacion de las consultas;
-- los scripts utilizados para los benchmarks;
-- el codigo de los indicadores y visualizaciones;
-- el tablero o la evidencia del tablero desarrollado;
-- este `README.md`, completado segun la siguiente seccion.
+Cuatro escalas: un mes 2026, todo 2026, 2024+2026 y los tres años. Cuatro consultas,
+calentamiento de ambas rutas, tres repeticiones con orden alternado y validación
+de equivalencia de todos los resultados. El tiempo incluye fetchall y excluye la
+descarga. CTAS+CHECKPOINT se mide aparte. Caché caliente: no se afirma medir I/O frío.
 
-Los archivos de datos descargados **no** deben incluirse.
+- timings.csv: cada ejecución, filas, archivos y coincidencia de resultados.
+- summary.csv: mediana, mínimo y máximo por consulta/ruta/escala.
+- materialization.csv: tiempo CTAS y bytes en disco.
+- environment.json: equipo, versiones, threads y metodología.
 
----
+Se reconstruye data/processed/materialized.duckdb y queda con el conjunto final.
+Metabase consulta otra base de agregados, sin bloquear la base del benchmark.
 
-# Documentacion del equipo
+## Cómo generar resultados principales y tablero (ejercicios 7-9)
 
-Las siguientes secciones deben ser completadas por cada equipo. El README final
-debe permitir que una persona que no participo en el desarrollo pueda levantar el
-ambiente, descargar los datos, ejecutar el analisis, reproducir los benchmarks y
-generar los resultados principales.
+```bash
+docker compose exec lab python scripts/report.py
+docker compose exec lab python scripts/create_notebook.py
+# Espere hasta que /api/health responda antes del setup.
+docker compose exec lab python scripts/setup_metabase.py --url http://metabase:3000
+```
 
-## Como levantar el ambiente
+La primera configuración crea un usuario local con contraseña aleatoria y guarda
+el acceso en `.env`, ignorado por Git. Consulte ese archivo local para iniciar
+sesión; no se publican credenciales. Para una cuenta ya configurada pueden usarse
+las variables MB_ADMIN_EMAIL y MB_ADMIN_PASSWORD. El script comprueba las consultas
+y crea/actualiza 10 tarjetas con SQL e interpretación y su tablero.
 
-<!-- TODO (Ejercicio 1.5) -->
+La conexión DuckDB es de solo lectura: `/workspace/data/processed/dashboard.duckdb`.
+IDs y SQL quedan en docs/dashboard.json. Abra Metabase en localhost:3000 y la ruta
+`/dashboard/<id>` indicada ahí. El hostname `metabase` pertenece a la red Docker.
+El informe incluye figuras estáticas complementarias, hallazgos numéricos y las
+respuestas de discusión. El notebook se genera y ejecuta sin errores.
 
-## Como descargar los datos
+Para actualizar datos, detenga Metabase antes de reescribir su snapshot:
 
-<!-- TODO (Ejercicios 2.6, 5.1 y 8.1) -->
+```bash
+docker compose stop metabase
+docker compose exec lab python scripts/run_pipeline.py
+docker compose start metabase
+# Espere a que /api/health responda.
+docker compose exec lab python scripts/setup_metabase.py --url http://metabase:3000
+```
 
-## Como ejecutar el analisis
+La tabla y snapshot se refrescan explícitamente. Las vistas se reconstruyen al
+analizar y descubren archivos nuevos. La comparación anual usa meses comunes;
+no compara doce meses de un año con un año 2026 parcial.
 
-<!-- TODO -->
+## Verificación final
 
-## Como reproducir los benchmarks
+```bash
+docker compose exec lab python scripts/download_data.py --years 2024 2025 2026 --manifest docs/manifests/rerun.json
+docker compose exec lab python scripts/verify.py
+```
 
-<!-- TODO (Ejercicio 6) -->
+Comprueba conservación de hashes, omisión de archivos anteriores, conteos de
+inventario/calidad/indicadores, benchmark en cuatro escalas, tarjetas con datos,
+notebook ejecutado y ausencia de Parquet, bases y credenciales en Git. El resultado
+está en docs/verification.json. La verificación de salud está en docs/ambiente.md.
 
-## Como generar los resultados principales
+## Alternativa Python local
 
-<!-- TODO -->
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python scripts/run_pipeline.py
+python scripts/setup_metabase.py --url http://localhost:3000
+```
+
+Los metadatos de benchmark indican dónde se midió. No mezclar tiempos macOS y
+contenedor sin reportarlo. Los datos siguen fuera de Git en ambas modalidades.
+
+## Entregables
+
+Ejercicios 1-2: ambiente y manifiesto inicial. Ejercicios 3-5: SQL y resultados por
+etapa. Ejercicio 6: script y tablas de benchmark. Ejercicio 7: 13 preguntas, 10
+indicadores visualizados y tablero. Ejercicios 8-9: evolución de tres años y
+respuestas 9.1-9.8. Se incluyen notebook ejecutado, figuras y verificaciones.
+La entrega es la URL de este fork; los commits registran los hitos del desarrollo.

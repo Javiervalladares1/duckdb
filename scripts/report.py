@@ -38,6 +38,7 @@ def observations(stage):
     text.append(f'**Calidad.** Se excluyen {excluded:,} de {rows:,} filas ({100*excluded/rows:.2f}%). '
                 'Los conteos originales permanecen disponibles y los motivos pueden solaparse. '
                 'El análisis describe la población filtrada y no todos los viajes registrados.')
+    text.append(f'**Fechas y faltantes.** Se detectan {int(quality.bad_date.sum()):,} filas con pickup fuera del mes/año del archivo o nulo y {int(quality.missing_passengers.sum()):,} filas sin passenger_count. El año analítico proviene del archivo y se valida contra pickup; no se imputan pasajeros.')
     return text
 
 
