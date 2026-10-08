@@ -46,7 +46,10 @@ su interpretación y SQL. Los gráficos estáticos son evidencia complementaria.
 5. No se imputa passenger_count ni se exige que esté entre 1 y 6. Se reportan sus
    faltantes y valores inusuales. No se deduplican filas: dos viajes iguales pueden
    ser reales y no hay identificador universal con el cual probar un duplicado.
-6. Los importes se reportan en USD nominales, sin ajuste por inflación. Un aumento
+6. total_amount excluye propinas en efectivo según el diccionario TLC. El código de
+   pago 0 identifica viajes Flex Fare, no un instrumento de pago; no se deduce un
+   aumento de efectivo a partir de un descenso del código 1.
+   Los importes se reportan en USD nominales, sin ajuste por inflación. Un aumento
    del ticket no prueba aumento de tarifas: también cambia la composición de viajes.
 7. Los indicadores mensuales usan viajes válidos; inventario y calidad usan todas
    las filas. Los benchmarks usan TODAS las filas normalizadas con SQL equivalente.
@@ -99,6 +102,8 @@ las escalas previas se reemplazan para limitar disco.
 
 - [Repositorio base](https://github.com/menene/duckdb)
 - [TLC: catálogo y advertencias de calidad](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)
+- [Diccionario Yellow TLC](https://www.nyc.gov/assets/tlc/downloads/pdf/data_dictionary_trip_records_yellow.pdf)
+- [Diccionario Green TLC](https://www.nyc.gov/assets/tlc/downloads/pdf/data_dictionary_trip_records_green.pdf)
 - [DuckDB: lectura Parquet y pushdown](https://duckdb.org/docs/stable/data/parquet/overview)
 - [DuckDB: concurrencia](https://duckdb.org/docs/stable/connect/concurrency)
 - [Driver DuckDB para Metabase](https://github.com/motherduckdb/metabase_duckdb_driver)

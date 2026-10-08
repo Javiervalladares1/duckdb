@@ -172,6 +172,7 @@ def main():
     document += ['**Cambio de esquema:** cbd_congestion_fee aparece desde 2025 según TLC. '
         'En 2024 el indicador conserva NULL. El ticket nominal incluye cargos y no mide un cambio causal '
         'atribuible al recargo. La evolución por mes y la distribución aportan contexto adicional.',
+        '**Interpretación de pagos:** el código 0 identifica viajes Flex Fare, no un instrumento de pago. Una menor proporción de código 1 no demuestra mayor uso de efectivo. total_amount excluye propinas en efectivo según los diccionarios TLC.',
         '## Ejercicio 9: discusión',
         '**9.1. Características útiles.** Lectura directa de Parquet, SQL analítico (ventanas, cuantiles, '
         'agrupaciones), union_by_name, ejecución en proceso y proyección de columnas. No se necesita '

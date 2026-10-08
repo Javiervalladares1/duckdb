@@ -4,10 +4,10 @@ import argparse
 import json
 import math
 import platform
-import statistics
 import time
 from datetime import datetime, timezone
 from decimal import Decimal
+from pathlib import Path
 import duckdb
 import pandas as pd
 from common import ROOT, connect, files, source_sql
@@ -47,7 +47,6 @@ def main():
     for scale, selected in scales:
         # Solo se borran artefactos generados por este script; nunca los Parquet.
         database.unlink(missing_ok=True)
-        Path = type(database)
         Path(str(database) + '.wal').unlink(missing_ok=True)
         con = connect(database)
         con.execute('CREATE VIEW parquet_source AS ' + source_sql(selected))

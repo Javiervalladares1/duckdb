@@ -13,6 +13,7 @@ notebook ejecutado y tablero Metabase con 10 visualizaciones.
 - [Consultas y resultados 2024+2026](docs/results/expanded_2024_2026/queries.md).
 - [Consultas y resultados finales](docs/results/final/queries.md).
 - [Verificación del ambiente](docs/ambiente.md).
+- [Evidencia del tablero Metabase](docs/tablero.md).
 
 ## Estructura y propósito
 
@@ -185,6 +186,10 @@ pip install -r requirements.txt
 python scripts/run_pipeline.py
 python scripts/setup_metabase.py --url http://localhost:3000
 ```
+
+En esta computadora hay además un entorno auxiliar fuera de iCloud en
+`/Users/javiervalladares/.cache/lab8-duckdb-venv`; puede ejecutar sus scripts con
+ese intérprete si la sincronización bloquea .venv.
 
 Los metadatos de benchmark indican dónde se midió. No mezclar tiempos macOS y
 contenedor sin reportarlo. Los datos siguen fuera de Git en ambas modalidades.

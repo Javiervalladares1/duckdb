@@ -79,23 +79,26 @@ def main():
         sql = f"SELECT period, taxi, {metric} AS value FROM monthly ORDER BY period, taxi;"
         settings = {'graph.dimensions':['period','taxi'], 'graph.metrics':['value'],
                     'graph.x_axis.title_text':'Mes', 'graph.y_axis.title_text':unit,
-                    'graph.colors':['#b57900','#008477']}
+                    'graph.colors':['#008477','#b57900']}
         if metric in ('trips','total_usd'):
             settings['graph.y_axis.scale'] = 'log'
+            settings['graph.y_axis.auto_range'] = False
+            settings['graph.y_axis.min'] = 10000 if metric=='trips' else 500000
+            settings['graph.y_axis.max'] = 10000000 if metric=='trips' else 200000000
         specifications.append(dict(slug=slug,name=name,description=description,sql=sql,settings=settings,display='line'))
     specifications += [
         dict(slug='08_hourly',name='Perfil horario por año y tipo',
              description='Participación horaria dentro de cada año/taxi. Normalizar evita confundir meses de exposición con comportamiento horario.',
              sql="SELECT hour, taxi || ' ' || year::VARCHAR AS series, round(100.0*trips/sum(trips) OVER (PARTITION BY taxi,year),3) AS value FROM hourly ORDER BY hour, series;",
-             settings={'graph.dimensions':['hour','series'],'graph.metrics':['value'],'graph.x_axis.title_text':'Hora local NYC','graph.y_axis.title_text':'% de viajes por año/tipo'},display='line'),
+             settings={'graph.dimensions':['hour','series'],'graph.metrics':['value'],'graph.x_axis.title_text':'Hora local NYC','graph.y_axis.title_text':'% de viajes por año/tipo','graph.colors':['#48b0a4','#008477','#00594f','#e7be5f','#b57900','#765100']},display='line'),
         dict(slug='09_quality',name='Exclusión por calidad',
              description='Porcentaje de filas que incumplen al menos una regla operativa. Los motivos se solapan; no se suman. No todo viaje excluido es falso.',
              sql='SELECT source_year::VARCHAR AS year, taxi, excluded_pct AS value FROM quality ORDER BY year, taxi;',
-             settings={'graph.dimensions':['year','taxi'],'graph.metrics':['value'],'graph.y_axis.title_text':'% de filas originales'},display='bar'),
+             settings={'graph.dimensions':['year','taxi'],'graph.metrics':['value'],'graph.y_axis.title_text':'% de filas originales','graph.colors':['#008477','#b57900']},display='bar'),
         dict(slug='10_evolution',name='Demanda en meses comparables',
              description='Conteo de viajes válidos solo en meses presentes en ambos taxis y todos los años. No extrapola el resto de 2026.',
              sql='SELECT year::VARCHAR AS year, taxi, trips AS value FROM common_months ORDER BY year, taxi;',
-             settings={'graph.dimensions':['year','taxi'],'graph.metrics':['value'],'graph.y_axis.scale':'log','graph.y_axis.title_text':'Viajes válidos (log)'},display='bar')]
+             settings={'graph.dimensions':['year','taxi'],'graph.metrics':['value'],'graph.y_axis.scale':'log','graph.y_axis.title_text':'Viajes válidos (log)','graph.colors':['#008477','#b57900'],'graph.y_axis.auto_range':False,'graph.y_axis.min':100000,'graph.y_axis.max':100000000},display='bar')]
     cards = []
     (ROOT / 'sql/dashboard').mkdir(parents=True, exist_ok=True)
     for spec in specifications:
@@ -114,7 +117,7 @@ def main():
             card = api('POST','/card',json=body)
         cards.append(dict(slug=spec['slug'],id=card['id'],name=spec['name'],sql=spec['sql'],
                           description=spec['description'],verified_rows=len(result['data']['rows'])))
-    dashboard_body = dict(name='Lab 8 - NYC TLC | 2024, 2025 y 2026',
+    dashboard_body = dict(name='Lab 8 - NYC TLC | 2024-2026 (2026 parcial)',
         description='10 indicadores DuckDB. 2026 parcial. Viajes válidos según reglas documentadas; USD nominales. Comparación anual con meses comunes.',parameters=[])
     old_id = saved.get('dashboard_id')
     if old_id and client.get(args.url+f'/api/dashboard/{old_id}',timeout=30).ok:
