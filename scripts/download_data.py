@@ -21,6 +21,7 @@ BASE = 'https://d37ci6vzurychx.cloudfront.net/trip-data'
 
 def session():
     client = requests.Session()
+    client.headers.update({'User-Agent': 'Mozilla/5.0 (compatible; Lab8-TLC/1.0)'})
     retry = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
     client.mount('https://', HTTPAdapter(max_retries=retry))
     return client
